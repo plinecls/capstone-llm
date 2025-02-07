@@ -24,15 +24,16 @@ def clean(
         ).select(fields_to_extract)
     )
 
-def main(spark: SparkSession, environment: str, tag: str, user: str):
+def read_clean_write(spark: SparkSession, environment: str, tag: str, user: str):
 
     questions = read(spark, json_path=f"{s3_bucket}/input/{tag}/questions.json")
     answers = read(spark, json_path=f"{s3_bucket}/input/{tag}/answers.json")
 
     cleaned_questions = (clean(
         df=questions, col_to_explode="items", 
-        fields_to_extract=['items.question_id', 'items.title', 'items.body'], 
+        fields_to_extract=['items.question_id', 'items.title', 'items.body', 'items.link'], 
         alias="items")
+        .withColumnRenamed("body", "question")
         # .show()
         )
 
@@ -40,7 +41,7 @@ def main(spark: SparkSession, environment: str, tag: str, user: str):
         df=answers, col_to_explode="items", 
         fields_to_extract=['items.answer_id', 'items.question_id', 'items.body'], 
         alias="items")
-        .withColumnRenamed("body", "answer_body")
+        .withColumnRenamed("body", "answer")
         )
 
     q_a = (
@@ -53,11 +54,12 @@ def main(spark: SparkSession, environment: str, tag: str, user: str):
     
     (q_a.repartition(q_a.count())
         .write
+        .mode("overwrite")
         .json(f"{s3_bucket}/cleaned/{user}/{tag}/"))
 
 
     
-def execute():
+def main():
     parser = argparse.ArgumentParser(description="capstone_llm")
     parser.add_argument(
         "-e", "--env", dest="env", help="environment we are executing in", required=False, default="local"
@@ -84,11 +86,11 @@ def execute():
             .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:3.3.4")
             .getOrCreate()
         )
-        main(session, args.env, args.tag, args.user)
+        read_clean_write(session, args.env, args.tag, args.user)
     else:
         with ClosableSparkSession("capstone_llm", spark_config=common_spark_config) as session:
-            main(session, args.env, args.tag, args.user)
+            read_clean_write(session, args.env, args.tag, args.user)
 
 
 if __name__ == "__main__":
-    execute()
+    main()
