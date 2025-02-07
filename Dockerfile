@@ -11,4 +11,4 @@ COPY . .
 RUN pip install -e .
 
 # Set the default command (Airflow will override this if needed)
-CMD ["python3", "-m", "capstonellm.tasks.clean", "--tag", "pyspark", "--user", "paulinec"]
+CMD ["python3", "-m", "capstonellm.tasks.clean"]
