@@ -4,4 +4,11 @@ USER 0
 ENV PYSPARK_PYTHON python3
 WORKDIR /opt/spark/work-dir
 
-#TODO add your project code and dependencies to the image
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+RUN pip install -e .
+
+# Set the default command (Airflow will override this if needed)
+CMD ["python3", "-m", "capstonellm.tasks.clean", "--tag", "pyspark", "--user", "paulinec"]
